@@ -1521,6 +1521,77 @@ class FeedRepository {
         ));
       }
     }
+    // "Discover Weekly": explore similar tracks from several of the
+    // listener's strongest seeds, but deliberately remove tracks already
+    // present in their recent, weekly, long-term, or local library signals.
+    // A week-based seed keeps the order stable during the week.
+    try {
+      final knownKeys = <String>{
+        for (final track in candidates)
+          '${track.name.toLowerCase().trim()}|${track.artist.toLowerCase().trim()}',
+        for (final track in ytLiked)
+          '${track.title.toLowerCase().trim()}|${track.artist.toLowerCase().trim()}',
+        for (final track in ytHistory)
+          '${track.title.toLowerCase().trim()}|${track.artist.toLowerCase().trim()}',
+      };
+      final discoverySeeds = unique.take(6).toList();
+      final batches = await Future.wait(discoverySeeds.map((seed) async {
+        try {
+          final fetch = fetchSimilar;
+          final result = fetch != null
+              ? await fetch(seed.name, seed.artist, tracksPerMix * 3)
+              : await _similarTracks(seed.name, seed.artist,
+                  limit: tracksPerMix * 3);
+          return result;
+        } catch (_) {
+          return <GeneratedTrack>[];
+        }
+      })).timeout(
+        const Duration(seconds: 14),
+        onTimeout: () => <List<GeneratedTrack>>[],
+      );
+      final seenDiscovery = <String>{};
+      final discoveryScored = <({GeneratedTrack track, double score})>[];
+      for (final track in batches.expand((batch) => batch)) {
+        if (track.name.trim().isEmpty || track.artist.trim().isEmpty) {
+          continue;
+        }
+        final key =
+            '${track.name.toLowerCase().trim()}|${track.artist.toLowerCase().trim()}';
+        if (knownKeys.contains(key) || isExcluded(track.name, track.artist)) {
+          continue;
+        }
+        if (!seenDiscovery.add(key)) continue;
+        final artistAffinity = _affinity(track.artist, affinities);
+        // Favor familiar sounds while keeping genuinely new artists eligible.
+        discoveryScored.add((
+          track: track,
+          score: artistAffinity * 24 + _random.nextDouble() * 5,
+        ));
+      }
+      final discovery = _diversify(
+        discoveryScored,
+        limit: tracksPerMix,
+        maxPerArtist: 2,
+      );
+      if (discovery.isNotEmpty) {
+        final playable = await resolveVideos(
+          discovery,
+          limit: tracksPerMix,
+        ).timeout(
+          const Duration(seconds: 35),
+          onTimeout: () => discovery,
+        );
+        if (playable.isNotEmpty) {
+          mixes.add(DailyMix(
+            title: 'Discover Weekly',
+            seedArtist: 'New tracks based on your taste',
+            tracks: playable,
+          ));
+        }
+      }
+    } catch (_) {}
+
     // "On Repeat": tracks the listener returns to most often.
     try {
       final repeatSeeds = await safeHome(() {
@@ -1618,10 +1689,19 @@ class FeedRepository {
                     !isExcluded(track.name, track.artist))
                 .toList();
             final deduped = <String>{};
-            final genreTracks = candidates
+            final genreScored = candidates
                 .where((track) => deduped.add(track.key))
-                .take(tracksPerMix)
+                .map((track) => (
+                      track: track,
+                      score: _affinity(track.artist, affinities) * 24 +
+                          _random.nextDouble() * 5,
+                    ))
                 .toList();
+            final genreTracks = _diversify(
+              genreScored,
+              limit: tracksPerMix,
+              maxPerArtist: 2,
+            );
             if (genreTracks.isEmpty) continue;
             final playable = await resolveVideos(genreTracks,
                 limit: tracksPerMix).timeout(
