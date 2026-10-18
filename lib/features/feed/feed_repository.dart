@@ -159,17 +159,27 @@ double localTrackFeedbackScore(
   Set<String> likedKeys = const <String>{},
   Set<String> downloadedKeys = const <String>{},
   Map<String, int> recentPlayCounts = const <String, int>{},
+  Map<String, int> earlySkipCounts = const <String, int>{},
+  Map<String, int> replayCounts = const <String, int>{},
   bool discovery = false,
 }) {
   final key = localTrackFeedbackKey(track.name, track.artist);
   final plays = recentPlayCounts[key] ?? 0;
+  final skips = earlySkipCounts[key] ?? 0;
+  final replays = replayCounts[key] ?? 0;
   var score = 0.0;
   if (likedKeys.contains(key)) score += 16.0;
   if (downloadedKeys.contains(key)) score += 8.0;
+  // Early skips are a strong negative signal, capped to avoid permanently
+  // burying a track after one bad mood/session.
+  score -= min(skips, 4) * 11.0;
   if (discovery) {
     score -= min(plays, 4) * 5.0;
+    // Replays still mean something, but novelty shelves should stay fresh.
+    score += min(replays, 3) * 2.0;
   } else {
     score += min(plays, 4) * 2.5;
+    score += min(replays, 3) * 7.0;
   }
   return score;
 }
@@ -979,6 +989,8 @@ class FeedRepository {
                     likedKeys: likedTrackKeys,
                     downloadedKeys: downloadedTrackKeys,
                     recentPlayCounts: recentPlayCounts,
+                    earlySkipCounts: local.earlySkipCounts,
+                    replayCounts: local.replayCounts,
                     discovery: discovery,
                   ) +
                   boost * 20 / (1 + i / 9) +
@@ -2088,10 +2100,21 @@ final feedRepositoryProvider = Provider<FeedRepository>((ref) {
                 ))
             .where((t) => t.name.isNotEmpty)
             .toList();
+        final feedback = db.loadTrackFeedback(limit: 500);
+        final earlySkips = <String, int>{
+          for (final f in feedback)
+            localTrackFeedbackKey(f.title, f.artist): f.earlySkips,
+        };
+        final replays = <String, int>{
+          for (final f in feedback)
+            localTrackFeedbackKey(f.title, f.artist): f.replays,
+        };
         return LocalTaste(
           recentPlays: plays,
           likedTracks: liked,
           downloadedTracks: downloads,
+          earlySkipCounts: earlySkips,
+          replayCounts: replays,
         );
       } catch (_) {
         return null;
