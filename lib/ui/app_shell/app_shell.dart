@@ -520,21 +520,83 @@ class _WaveShellState extends ConsumerState<WaveShell> {
         .playQueue(tracks, 0, sourceLabel: 'Local files');
   }
 
+  Widget _mobileNavigation(String active) {
+    const destinations = <({String path, String label, IconData icon})>[
+      (path: '/home', label: 'Home', icon: FluentIcons.home),
+      (path: '/search', label: 'Search', icon: FluentIcons.search),
+      (path: '/discover', label: 'Discover', icon: FluentIcons.sparkle),
+      (path: '/liked', label: 'Library', icon: FluentIcons.music_in_collection),
+    ];
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF101010),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+      ),
+      padding: const EdgeInsets.only(top: 6, bottom: 8),
+      child: Row(
+        children: [
+          for (final destination in destinations)
+            Expanded(
+              child: Semantics(
+                button: true,
+                selected: active == destination.path,
+                label: destination.label,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _go(destination.path),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          destination.icon,
+                          size: 21,
+                          color: active == destination.path
+                              ? const Color(0xFF1DB954)
+                              : const Color(0xFFAAAAAA),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          destination.label,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: active == destination.path
+                                ? const Color(0xFF1DB954)
+                                : const Color(0xFFAAAAAA),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dark = waveIsDark(context);
     final layout = ref.watch(themeControllerProvider.select((t) => t.uiLayout));
     final amoled = ref.watch(themeControllerProvider.select((t) => t.amoled));
     final width = MediaQuery.sizeOf(context).width;
+    final isMobile = width < 600;
     final active = waveActivePath(widget.location);
     final hasTrack = ref.watch(
       playbackServiceProvider.select((s) => s.current != null),
     );
     // Navigation layout is independent of color palettes.
     // Compact collapses earlier; expanded keeps the rail open on desktop.
-    final collapsed = width < (layout == 'compact' ? 1100 : 900)
+    final collapsed = isMobile
         ? true
-        : layout == 'expanded' ? false : !_railExpanded;
+        : width < (layout == 'compact' ? 1100 : 900)
+            ? true
+            : layout == 'expanded' ? false : !_railExpanded;
     final routePath = waveRoutePath(widget.location);
     final isLyrics = routePath.startsWith('/lyrics');
     final isNowPlaying = routePath.startsWith('/now');
@@ -556,10 +618,11 @@ class _WaveShellState extends ConsumerState<WaveShell> {
               : WaveColors.lightBackground,
           child: Column(
             children: [
-              _titleBarFor(
-                _backStack.isNotEmpty,
-                _forwardStack.isNotEmpty,
-              ),
+              if (!isMobile)
+                _titleBarFor(
+                  _backStack.isNotEmpty,
+                  _forwardStack.isNotEmpty,
+                ),
               const WaveInfoBarHost(),
               // Overlay rail: the content below keeps full width and the
               // rail floats above its left edge (60 collapsed, 200
@@ -601,7 +664,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                       // Page reserves the collapsed rail
                                       // strip; the rail floats above it.
                                       Positioned.fill(
-                                        left: WaveDensity.railCollapsed,
+                                        left: isMobile ? 0 : WaveDensity.railCollapsed,
                                         child: widget.child,
                                       ),
                                       // Light-dismiss: tapping outside the
@@ -626,16 +689,17 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                       // internally; content constraints
                                       // stay constant, so nothing reflows
                                       // or rebuilds during the animation.
-                                      Positioned(
-                                        left: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        child: WaveSideRail(
-                                          expanded: !collapsed,
-                                          active: active,
-                                          onGo: _go,
+                                      if (!isMobile)
+                                        Positioned(
+                                          left: 0,
+                                          top: 0,
+                                          bottom: 0,
+                                          child: WaveSideRail(
+                                            expanded: !collapsed,
+                                            active: active,
+                                            onGo: _go,
+                                          ),
                                         ),
-                                      ),
                                       if (_draggingFiles)
                                         Positioned.fill(
                                           child: Container(
@@ -771,6 +835,7 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                         ],
                       ),
                     ),
+              if (isMobile) _mobileNavigation(active),
             ],
           ),
         );
