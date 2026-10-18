@@ -1601,8 +1601,51 @@ class FeedRepository {
       return seenTracks.add(key);
     }).toList();
 
-    // Rotate the seed order once per day, but keep it stable during that day.
-    unique.shuffle(Random(feedDaySeed(DateTime.now())));
+    // Rank seeds by a blended taste signal instead of randomly picking
+    // artists. Recent listening gets a boost, weekly listening shapes the
+    // current phase, and long-term taste keeps mixes from chasing one-week
+    // obsessions. A day-seeded tie-break keeps the selection stable all day.
+    final recentKeys = <String, int>{};
+    final weeklyKeys = <String, int>{};
+    final longTermKeys = <String, int>{};
+    void indexSignals(List<HomeTrack> tracks, Map<String, int> target) {
+      for (var i = 0; i < tracks.length; i++) {
+        final key = normalizeArtistKey(tracks[i].artist);
+        if (key.isNotEmpty) target.putIfAbsent(key, () => i);
+      }
+    }
+    indexSignals(recent, recentKeys);
+    indexSignals(weekly, weeklyKeys);
+    indexSignals(longTerm, longTermKeys);
+    final dayRandom = Random(feedDaySeed(DateTime.now()));
+    double seedScore(HomeTrack track) {
+      final artist = normalizeArtistKey(track.artist);
+      final recentRank = recentKeys[artist];
+      final weeklyRank = weeklyKeys[artist];
+      final longRank = longTermKeys[artist];
+      return (recentRank == null ? 0 : 2.2 / (1 + recentRank / 8)) +
+          (weeklyRank == null ? 0 : 3.0 / (1 + weeklyRank / 10)) +
+          (longRank == null ? 0 : 1.8 / (1 + longRank / 12)) +
+          (local.likedTracks.any((t) =>
+                  normalizeArtistKey(t.artist) == artist) ? 1.5 : 0) +
+          (local.downloadedTracks.any((t) =>
+                  normalizeArtistKey(t.artist) == artist) ? 0.7 : 0);
+    }
+    unique.sort((a, b) {
+      final byTaste = seedScore(b).compareTo(seedScore(a));
+      return byTaste != 0 ? byTaste : a.artist.compareTo(b.artist);
+    });
+    // Small deterministic daily rotation avoids the exact same order forever.
+    final dayTieBreak = <String, double>{
+      for (final track in unique)
+        normalizeArtistKey(track.artist): dayRandom.nextDouble(),
+    };
+    unique.sort((a, b) {
+      final byTaste = seedScore(b).compareTo(seedScore(a));
+      if (byTaste != 0) return byTaste;
+      return (dayTieBreak[normalizeArtistKey(b.artist)] ?? 0)
+          .compareTo(dayTieBreak[normalizeArtistKey(a.artist)] ?? 0);
+    });
     final seenArtists = <String>{};
     final seeds = unique.where((track) {
       final artist = normalizeArtistKey(track.artist);
