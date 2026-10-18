@@ -1667,6 +1667,12 @@ class FeedRepository {
     );
 
     final mixes = <DailyMix>[];
+    // Prefer a different song set for each Daily Mix. A global key set
+    // prevents the strongest recommendation sources from repeating the
+    // same tracks across every artist-anchored mix.
+    final tracksUsedByDailyMixes = <String>{};
+    final dailyMixArtistCounts = <String, int>{};
+    final dailyRotation = Random(feedDaySeed(DateTime.now()));
     for (final seed in seeds) {
       List<GeneratedTrack> similar;
       try {
@@ -1691,15 +1697,59 @@ class FeedRepository {
         return seenSimilar.add(track.key);
       }).toList();
 
-      final scored = usable.map((track) => (
-            track: track,
-            score: _affinity(track.artist, affinities) * 30 +
-                _random.nextDouble() * 10,
-          )).toList();
-      final picked = applyExclusions(
-        _diversify(scored, limit: tracksPerMix, maxPerArtist: 2),
+      // Source order is a weak similarity signal; artist affinity is
+      // stronger. Stable daily jitter gives variety without reshuffling
+      // the same mix every time Home rebuilds.
+      final dailyJitter = <String, double>{
+        for (final track in usable) track.key: dailyRotation.nextDouble(),
+      };
+      final scored = <({GeneratedTrack track, double score})>[];
+      for (var i = 0; i < usable.length; i++) {
+        final track = usable[i];
+        final artist = normalizeArtistKey(track.artist);
+        final alreadyUsed = tracksUsedByDailyMixes.contains(track.key);
+        final repeatPenalty = alreadyUsed ? 28.0 : 0.0;
+        final artistRepeatPenalty =
+            (dailyMixArtistCounts[artist] ?? 0) * 8.0;
+        final sourceRankBonus = 12.0 / (1 + i / 5);
+        scored.add((
+          track: track,
+          score: _affinity(track.artist, affinities) * 30 +
+              sourceRankBonus +
+              (dailyJitter[track.key] ?? 0) * 1.5 -
+              repeatPenalty -
+              artistRepeatPenalty,
+        ));
+      }
+      scored.sort((a, b) => b.score.compareTo(a.score));
+      // First pass avoids songs used by earlier mixes. If a seed has a
+      // small candidate pool, a second pass can reuse tracks rather than
+      // leaving its mix empty.
+      final freshScored = scored
+          .where((entry) => !tracksUsedByDailyMixes.contains(entry.track.key))
+          .toList();
+      var picked = applyExclusions(
+        _diversify(freshScored, limit: tracksPerMix, maxPerArtist: 2),
         excluded,
       );
+      if (picked.length < tracksPerMix) {
+        final pickedKeys = picked.map((track) => track.key).toSet();
+        final refill = scored
+            .where((entry) => !pickedKeys.contains(entry.track.key))
+            .toList();
+        picked = applyExclusions([
+          ...picked,
+          ..._diversify(
+            refill,
+            limit: tracksPerMix - picked.length,
+            maxPerArtist: 2,
+            sharedCounts: <String, int>{
+              for (final track in picked)
+                normalizeArtistKey(track.artist): 1,
+            },
+          ),
+        ], excluded);
+      }
       if (picked.isEmpty) continue;
 
       List<GeneratedTrack> playable;
@@ -1716,6 +1766,14 @@ class FeedRepository {
       }
 
       if (playable.isNotEmpty) {
+        tracksUsedByDailyMixes.addAll(playable.map((track) => track.key));
+        for (final track in playable) {
+          final artist = normalizeArtistKey(track.artist);
+          if (artist.isNotEmpty) {
+            dailyMixArtistCounts[artist] =
+                (dailyMixArtistCounts[artist] ?? 0) + 1;
+          }
+        }
         mixes.add(DailyMix(
           title: 'Daily Mix ${mixes.length + 1}',
           seedArtist: seed.artist,
