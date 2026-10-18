@@ -25,6 +25,19 @@ void main() {
     expect(rows.single.replays, 1);
   });
 
+  test('artist exclusions persist and use normalized artist keys', () {
+    db.addArtistExclusion('  The Example  ');
+    expect(
+      db.loadExclusionKeys(),
+      contains(AppDatabase.artistExclusionKey('the example')),
+    );
+    db.removeExclusion(AppDatabase.artistExclusionKey('THE EXAMPLE'));
+    expect(
+      db.loadExclusionKeys(),
+      isNot(contains(AppDatabase.artistExclusionKey('the example'))),
+    );
+  });
+
   test('ignores blank track metadata and loads empty feedback safely', () {
     db.recordTrackSkip(title: ' ', artist: 'Artist');
     db.recordTrackReplay(title: 'Song', artist: '');
