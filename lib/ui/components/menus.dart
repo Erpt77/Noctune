@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/track_actions.dart';
 import '../../core/audio/stream_models.dart';
+import '../../core/storage/app_database.dart';
 import '../../features/downloads/download_manager.dart';
 import '../../features/home/home_providers.dart';
 import '../../features/library/playlists.dart';
@@ -248,16 +249,39 @@ List<WaveMenuEntry> waveTrackMenuItems({
     );
   }
   items.add(const WaveMenuSeparator());
+  final database = ref.read(databaseProvider);
+  final artistExclusionKey = AppDatabase.artistExclusionKey(artist);
+  final artistExcluded =
+      database.loadExclusionKeys().contains(artistExclusionKey);
   items.add(
     WaveMenuAction(
       leading: const Icon(FluentIcons.blocked, size: 15),
-      label: "Don't recommend",
+      label: "Don't recommend this song",
       onPressed: () {
         try {
-          ref
-              .read(databaseProvider)
-              .addExclusion(name: title, artist: artist);
-          // Recommendations rebuild without it on next load.
+          database.addExclusion(name: title, artist: artist);
+          ref.invalidate(feedProvider);
+        } catch (_) {}
+      },
+    ),
+  );
+  items.add(
+    WaveMenuAction(
+      leading: Icon(
+        artistExcluded ? FluentIcons.check_mark : FluentIcons.blocked,
+        size: 15,
+      ),
+      label: artistExcluded
+          ? 'Allow this artist in recommendations'
+          : "Don't recommend this artist",
+      hint: 'Applies to all recommendation shelves',
+      onPressed: () {
+        try {
+          if (artistExcluded) {
+            database.removeExclusion(artistExclusionKey);
+          } else {
+            database.addArtistExclusion(artist);
+          }
           ref.invalidate(feedProvider);
         } catch (_) {}
       },

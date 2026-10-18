@@ -214,6 +214,37 @@ void main() {
     });
   });
 
+  group('artist recommendation exclusions', () {
+    test('excludes all tracks by an artist but preserves other artists', () {
+      final tracks = [
+        GeneratedTrack(name: 'Song One', artist: 'Blocked Artist'),
+        GeneratedTrack(name: 'Song Two', artist: ' blocked artist '),
+        GeneratedTrack(name: 'Different Song', artist: 'Other Artist'),
+      ];
+      final excluded = {
+        AppDatabase.artistExclusionKey('Blocked Artist'),
+      };
+      final result = applyExclusions(tracks, excluded);
+      expect(result.map((t) => t.name).toList(), ['Different Song']);
+    });
+
+    test('keeps exact song exclusions working alongside artist exclusions', () {
+      final tracks = [
+        GeneratedTrack(name: 'Blocked Song', artist: 'Artist'),
+        GeneratedTrack(name: 'Allowed Song', artist: 'Artist'),
+        GeneratedTrack(name: 'Other Song', artist: 'Other Artist'),
+      ];
+      final result = applyExclusions(
+        tracks,
+        {
+          AppDatabase.exclusionKey('Blocked Song', 'Artist'),
+          AppDatabase.artistExclusionKey('Other Artist'),
+        },
+      );
+      expect(result.map((t) => t.name).toList(), ['Allowed Song']);
+    });
+  });
+
   group('rankNewReleases', () {
     YouTubeMusicEntity album(String name, String artist) =>
         YouTubeMusicEntity(
