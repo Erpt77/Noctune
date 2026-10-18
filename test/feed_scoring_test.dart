@@ -142,6 +142,32 @@ void main() {
       final key = localTrackFeedbackKey('signal', 'artist');
       expect(localTrackFeedbackScore(track, likedKeys: {key}), 16.0);
     });
+
+    test('early skips lower a track score', () {
+      final track = _t('Signal', 'Artist');
+      final key = localTrackFeedbackKey('Signal', 'Artist');
+      expect(
+        localTrackFeedbackScore(track, earlySkipCounts: {key: 2}),
+        -22.0,
+      );
+    });
+
+    test('deliberate replays boost familiar shelves more than discovery', () {
+      final track = _t('Signal', 'Artist');
+      final key = localTrackFeedbackKey('Signal', 'Artist');
+      expect(
+        localTrackFeedbackScore(track, replayCounts: {key: 2}),
+        14.0,
+      );
+      expect(
+        localTrackFeedbackScore(
+          track,
+          replayCounts: {key: 2},
+          discovery: true,
+        ),
+        4.0,
+      );
+    });
   });
 
   group('normalizeArtistKey', () {
