@@ -13,6 +13,9 @@ import 'package:window_manager/window_manager.dart';
 /// always starts, even on platforms missing a backend. Opaque
 /// observatory surfaces are the polished fallback.
 Future<void> setupWindow() async {
+  // Native window chrome, tray, and global hotkeys are desktop-only.
+  // Android/iOS use the operating system's normal app surface.
+  if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
   await _setupAcrylic();
   try {
     await windowManager.ensureInitialized();
@@ -93,6 +96,7 @@ Future<void> _setupTray() async {
 /// `Binding '<Primary><Alt>…' failed!` warnings and the keys stay dead.
 /// Shell UI must offer the same combos as in-app shortcuts instead.
 bool get globalHotkeysSupported {
+  if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return false;
   if (!Platform.isLinux) return true;
   return Platform.environment['WAYLAND_DISPLAY'] == null;
 }
