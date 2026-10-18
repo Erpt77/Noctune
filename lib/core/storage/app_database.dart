@@ -240,7 +240,7 @@ class AppDatabase {
 
   /// Stable key for excluding every track credited to an artist.
   static String artistExclusionKey(String artist) =>
-      'artist:${artist.toLowerCase().trim().replaceAll(RegExp(r'\\s+'), ' ')}';
+      'artist:${artist.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ')}';
 
   void addArtistExclusion(String artist) {
     final value = artist.trim();
