@@ -98,7 +98,7 @@ List<HomeTrack> topTracks() =>
     [ht('Top One', 'Superstar'), ht('Top Two', 'Idol')];
 
 void main() {
-group('localTrackFeedbackScore', () {
+  group('localTrackFeedbackScore', () {
     test('likes and downloads strongly boost a matching track', () {
       final track = _t('Signal', 'Artist');
       final key = localTrackFeedbackKey('Signal', 'Artist');
