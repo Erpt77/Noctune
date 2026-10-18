@@ -238,6 +238,21 @@ class AppDatabase {
     );
   }
 
+  /// Stable key for excluding every track credited to an artist.
+  static String artistExclusionKey(String artist) =>
+      'artist:${artist.toLowerCase().trim().replaceAll(RegExp(r'\\s+'), ' ')}';
+
+  void addArtistExclusion(String artist) {
+    final value = artist.trim();
+    if (value.isEmpty) return;
+    _db.execute(
+      'INSERT OR REPLACE INTO recommendation_exclusions '
+      '(track_key, excluded_at_millis, track_name, artist_name) '
+      'VALUES (?, ?, ?, ?);',
+      [artistExclusionKey(value), DateTime.now().millisecondsSinceEpoch, 'artist', value],
+    );
+  }
+
   void removeExclusion(String key) {
     _db.execute(
         'DELETE FROM recommendation_exclusions WHERE track_key = ?;',
