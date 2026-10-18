@@ -524,8 +524,8 @@ class _WaveShellState extends ConsumerState<WaveShell> {
     const destinations = <({String path, String label, IconData icon})>[
       (path: '/home', label: 'Home', icon: FluentIcons.home),
       (path: '/search', label: 'Search', icon: FluentIcons.search),
-      (path: '/discover', label: 'Discover', icon: FluentIcons.sparkle),
-      (path: '/liked', label: 'Library', icon: FluentIcons.music_in_collection),
+      (path: '/discover', label: 'Discover', icon: FluentIcons.compass),
+      (path: '/liked', label: 'Library', icon: FluentIcons.music_note),
     ];
     return Container(
       decoration: BoxDecoration(
