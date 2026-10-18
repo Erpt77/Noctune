@@ -479,7 +479,7 @@ class FeedRepository {
     ).toList();
     final excluded = _db?.loadExclusionKeys() ?? const <String>{};
     final eligible = unique.where((t) =>
-      !excluded.contains(AppDatabase.exclusionKey(t.name, t.artist))
+      !isRecommendationExcluded(t.name, t.artist, excluded)
     ).toList();
     if (eligible.isEmpty) return const <GeneratedTrack>[];
     final scored = eligible.map((t) => (
@@ -792,7 +792,7 @@ class FeedRepository {
         final key = '${track.name.toLowerCase().trim()}|${track.artist.toLowerCase().trim()}';
         if (track.name.trim().isEmpty || track.artist.trim().isEmpty ||
             known.contains(key) ||
-            excluded.contains(AppDatabase.exclusionKey(track.name, track.artist)) ||
+            isRecommendationExcluded(track.name, track.artist, excluded) ||
             !seen.add(key)) continue;
         candidates.add(track);
       }
@@ -1045,7 +1045,7 @@ class FeedRepository {
       // Seeds skip banned tracks — a ban means "not this", so its
       // neighborhood shouldn't seed either.
       bool banned(HomeTrack t) =>
-          excluded.contains(AppDatabase.exclusionKey(t.name, t.artist));
+          isRecommendationExcluded(t.name, t.artist, excluded);
       final seeds = <HomeTrack>[];
       final seenArtists = <String>{};
       HomeTrack ytSeed(YouTubeMusicTrack t) => HomeTrack(
@@ -1131,9 +1131,7 @@ class FeedRepository {
           if (!lfmActive)
             ...score(
                 ytHistory
-                    .where((t) => !excluded.contains(
-                        AppDatabase.exclusionKey(
-                            t.title, t.artist)))
+                    .where((t) => !isRecommendationExcluded(t.title, t.artist, excluded))
                     .take(20)
                     .map(fromYt)
                     .toList(),
@@ -1646,7 +1644,7 @@ class FeedRepository {
 
     final excluded = _db?.loadExclusionKeys() ?? const <String>{};
     bool isExcluded(String name, String artist) =>
-        excluded.contains(AppDatabase.exclusionKey(name, artist));
+        isRecommendationExcluded(name, artist, excluded);
 
     final candidates = <HomeTrack>[
       ...recent,
