@@ -145,6 +145,34 @@ FeedEmptyReason resolveEmptyReason({
 int feedDaySeed(DateTime now) =>
     DateTime(now.year, now.month, now.day)
         .millisecondsSinceEpoch;
+
+/// Stable key shared by local playback, likes, downloads and feed tracks.
+String localTrackFeedbackKey(String name, String artist) =>
+    '${name.toLowerCase().trim()}|${artist.toLowerCase().trim()}';
+
+/// On-device feedback adjustment for recommendation ranking.
+/// Likes are the strongest positive signal, downloads indicate ownership,
+/// and repeated plays reinforce familiar tracks. Discovery shelves invert
+/// the play-count signal so they introduce less recently replayed music.
+double localTrackFeedbackScore(
+  GeneratedTrack track, {
+  Set<String> likedKeys = const <String>{},
+  Set<String> downloadedKeys = const <String>{},
+  Map<String, int> recentPlayCounts = const <String, int>{},
+  bool discovery = false,
+}) {
+  final key = localTrackFeedbackKey(track.name, track.artist);
+  final plays = recentPlayCounts[key] ?? 0;
+  var score = 0.0;
+  if (likedKeys.contains(key)) score += 16.0;
+  if (downloadedKeys.contains(key)) score += 8.0;
+  if (discovery) {
+    score -= min(plays, 4) * 5.0;
+  } else {
+    score += min(plays, 4) * 2.5;
+  }
+  return score;
+}
 /// Canonical artist key for taste math: lowercase, collapsed space,
 /// featured-credit and collaboration suffixes stripped (`feat./ft./featuring/with/x/&/vs` +
 /// parenthesised variants), topic channels and junk mapped to ''. Pure — unit tested.
@@ -923,15 +951,36 @@ class FeedRepository {
       List<GeneratedTrack> clean(List<GeneratedTrack> tracks) =>
           applyExclusions(tracks, excluded);
 
+      final likedTrackKeys = local.likedTracks
+          .map((t) => localTrackFeedbackKey(t.name, t.artist))
+          .toSet();
+      final downloadedTrackKeys = local.downloadedTracks
+          .map((t) => localTrackFeedbackKey(t.name, t.artist))
+          .toSet();
+      final recentPlayCounts = <String, int>{};
+      for (final t in local.recentPlays) {
+        final key = localTrackFeedbackKey(t.name, t.artist);
+        recentPlayCounts.update(key, (count) => count + 1,
+            ifAbsent: () => 1);
+      }
+
       List<({GeneratedTrack track, double score})> score(
         List<GeneratedTrack> tracks,
-        double boost,
-      ) {
+        double boost, {
+        bool discovery = false,
+      }) {
         return [
           for (var i = 0; i < tracks.length; i++)
             (
               track: tracks[i],
               score: normAffinity(tracks[i].artist) * 50 +
+                  localTrackFeedbackScore(
+                    tracks[i],
+                    likedKeys: likedTrackKeys,
+                    downloadedKeys: downloadedTrackKeys,
+                    recentPlayCounts: recentPlayCounts,
+                    discovery: discovery,
+                  ) +
                   boost * 20 / (1 + i / 9) +
                   (tracks[i].videoId.isNotEmpty ? 4 : -2) +
                   rotation.nextDouble() * 12,
@@ -1041,7 +1090,8 @@ class FeedRepository {
         discovery.addAll(batch);
       }
       final fresh = _diversify(
-        score(applyExclusions(discovery, excluded), 2.0),
+        score(applyExclusions(discovery, excluded), 2.0,
+            discovery: true),
         limit: 12,
         maxPerArtist: 1,
         sharedCounts: pageCounts,
@@ -1108,7 +1158,8 @@ class FeedRepository {
         becauseSeed = '';
       }
       final because = _diversify(
-        score(applyExclusions(becausePool, excluded), 2.2),
+        score(applyExclusions(becausePool, excluded), 2.2,
+            discovery: true),
         limit: 12,
         maxPerArtist: 1,
         sharedCounts: pageCounts,
