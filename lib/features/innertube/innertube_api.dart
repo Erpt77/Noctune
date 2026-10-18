@@ -3717,8 +3717,8 @@ static String normalize(String s) {
           'No reliable YouTube Music match found for $title by $artist');
     }
     // Preserve the hot working set instead of clearing every cached match.
-    _trimOldest(_matchCache, _maxMatchCacheEntries);
     _matchCache[cacheKey] = best;
+    _trimOldest(_matchCache, _maxMatchCacheEntries);
     // Persist for instant reuse (disk cache).
     try {
       _disk?.saveMatchEntry(
