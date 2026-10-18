@@ -17,16 +17,26 @@ class LocalTaste {
   /// Downloaded tracks (owned collection).
   final List<HomeTrack> downloadedTracks;
 
+  /// Counts of deliberately early-skipped tracks, keyed by normalized title|artist.
+  final Map<String, int> earlySkipCounts;
+
+  /// Counts of tracks deliberately replayed with the Previous control.
+  final Map<String, int> replayCounts;
+
   const LocalTaste({
     this.recentPlays = const [],
     this.likedTracks = const [],
     this.downloadedTracks = const [],
+    this.earlySkipCounts = const {},
+    this.replayCounts = const {},
   });
 
   bool get isEmpty =>
       recentPlays.isEmpty &&
       likedTracks.isEmpty &&
-      downloadedTracks.isEmpty;
+      downloadedTracks.isEmpty &&
+      earlySkipCounts.isEmpty &&
+      replayCounts.isEmpty;
 
   /// Seed pool for discovery/personal-mix: recents first (current
   /// taste), then liked, then downloads — deduped, artists capped

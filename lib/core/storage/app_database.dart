@@ -17,7 +17,7 @@ import 'package:sqlite3/sqlite3.dart';
 /// Migrations are additive and never drop user data (no destructive
 /// fallback, unlike the temporary Android `fallbackToDestructiveMigration`).
 class AppDatabase {
-  static const int schemaVersion = 6;
+  static const int schemaVersion = 8;
 
   final Database _db;
 
@@ -73,6 +73,10 @@ class AppDatabase {
     if (version < 7) {
       _createV7();
       _db.execute('PRAGMA user_version=7;');
+    }
+    if (version < 8) {
+      _createV8();
+      _db.execute('PRAGMA user_version=8;');
     }
   }
 
@@ -362,6 +366,25 @@ class AppDatabase {
     } catch (_) {}
   }
 
+  /// v8: local recommendation feedback. Only explicit early skips and
+  /// deliberate replays are counted; no listening data leaves this device.
+  void _createV8() {
+    _db.execute('''
+      CREATE TABLE IF NOT EXISTS local_track_feedback (
+        track_key TEXT PRIMARY KEY,
+        title TEXT NOT NULL DEFAULT '',
+        artist TEXT NOT NULL DEFAULT '',
+        early_skip_count INTEGER NOT NULL DEFAULT 0,
+        replay_count INTEGER NOT NULL DEFAULT 0,
+        updated_at_millis INTEGER NOT NULL DEFAULT 0
+      );
+    ''');
+    _db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_local_track_feedback_updated
+      ON local_track_feedback(updated_at_millis DESC);
+    ''');
+  }
+
   // -- local play log (keyless-guest taste) --------------------------------
   //
   // Every resolved track opening records one row (see PlaybackService),
@@ -399,6 +422,64 @@ class AppDatabase {
         [localPlaysCap],
       );
     } catch (_) {}
+  }
+
+  /// Record an early user skip as negative recommendation feedback.
+  void recordTrackSkip({required String title, required String artist}) =>
+      _updateTrackFeedback(title, artist, earlySkipDelta: 1);
+
+  /// Record a deliberate replay initiated with the Previous control.
+  void recordTrackReplay({required String title, required String artist}) =>
+      _updateTrackFeedback(title, artist, replayDelta: 1);
+
+  void _updateTrackFeedback(
+    String title,
+    String artist, {
+    int earlySkipDelta = 0,
+    int replayDelta = 0,
+  }) {
+    final t = title.trim();
+    final a = artist.trim();
+    if (t.isEmpty || a.isEmpty ||
+        (earlySkipDelta == 0 && replayDelta == 0)) return;
+    final key = '${t.toLowerCase()}|${a.toLowerCase()}';
+    try {
+      _db.execute(
+        'INSERT INTO local_track_feedback '
+        '(track_key, title, artist, early_skip_count, replay_count, updated_at_millis) '
+        'VALUES (?, ?, ?, ?, ?, ?) '
+        'ON CONFLICT(track_key) DO UPDATE SET '
+        'title = excluded.title, artist = excluded.artist, '
+        'early_skip_count = early_skip_count + excluded.early_skip_count, '
+        'replay_count = replay_count + excluded.replay_count, '
+        'updated_at_millis = excluded.updated_at_millis;',
+        [key, t, a, earlySkipDelta, replayDelta,
+          DateTime.now().millisecondsSinceEpoch],
+      );
+      _db.execute(
+        'DELETE FROM local_track_feedback WHERE track_key NOT IN '
+        '(SELECT track_key FROM local_track_feedback '
+        'ORDER BY updated_at_millis DESC LIMIT 1000);',
+      );
+    } catch (_) {}
+  }
+
+  List<({String title, String artist, int earlySkips, int replays})>
+      loadTrackFeedback({int limit = 500}) {
+    try {
+      return _db.select(
+        'SELECT title, artist, early_skip_count, replay_count '
+        'FROM local_track_feedback ORDER BY updated_at_millis DESC LIMIT ?;',
+        [limit],
+      ).map((r) => (
+        title: (r['title'] as String?) ?? '',
+        artist: (r['artist'] as String?) ?? '',
+        earlySkips: (r['early_skip_count'] as int?) ?? 0,
+        replays: (r['replay_count'] as int?) ?? 0,
+      )).where((r) => r.title.isNotEmpty && r.artist.isNotEmpty).toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   List<({String title, String artist, int atMillis})> loadRecentPlays({

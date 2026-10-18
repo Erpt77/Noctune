@@ -740,9 +740,25 @@ class PlaybackService extends StateNotifier<PlayerSnapshot> {
     } catch (_) {}
   }
 
+  /// Only early manual skips are negative preference signals. Natural
+  /// track completion never calls this, and late skips are not penalized.
+  void _recordEarlyManualSkip() {
+    final track = state.current;
+    if (track == null) return;
+    final elapsed = _accumulatedSeconds > state.position.inSeconds
+        ? _accumulatedSeconds.round()
+        : state.position.inSeconds;
+    final duration = state.duration.inSeconds;
+    final isEarly = elapsed < 30 ||
+        (duration > 0 && elapsed / duration < 0.25);
+    if (!isEarly) return;
+    _sessions.recordTrackSkip(track.title, track.artist);
+  }
+
   Future<void> next() async {
     final nextIndex = _nextIndex();
     if (nextIndex == null) return;
+    _recordEarlyManualSkip();
     state = state.copyWith(
       currentIndex: nextIndex,
       current: state.queue[nextIndex],
@@ -756,14 +772,24 @@ class PlaybackService extends StateNotifier<PlayerSnapshot> {
 
   Future<void> previous() async {
     if (state.position > const Duration(seconds: 5)) {
+      final current = state.current;
+      if (current != null) {
+        _sessions.recordTrackReplay(current.title, current.artist);
+      }
       await seek(Duration.zero);
       return;
     }
     final prevIndex = _prevIndex();
     if (prevIndex == null) {
+      final current = state.current;
+      if (current != null) {
+        _sessions.recordTrackReplay(current.title, current.artist);
+      }
       await seek(Duration.zero);
       return;
     }
+    final replayed = state.queue[prevIndex];
+    _sessions.recordTrackReplay(replayed.title, replayed.artist);
     state = state.copyWith(
       currentIndex: prevIndex,
       current: state.queue[prevIndex],
@@ -2124,6 +2150,10 @@ class SessionStore {
   void clear() => _db.clearPlaybackSession();
   void recordLocalPlay(String title, String artist) =>
       _db.recordLocalPlay(title: title, artist: artist);
+  void recordTrackSkip(String title, String artist) =>
+      _db.recordTrackSkip(title: title, artist: artist);
+  void recordTrackReplay(String title, String artist) =>
+      _db.recordTrackReplay(title: title, artist: artist);
 }
 
 final playbackServiceProvider =
