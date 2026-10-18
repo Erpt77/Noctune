@@ -223,6 +223,16 @@ String normalizeArtistKey(String artist) {
 
   return k;
 }
+/// Match either a single-track exclusion or an artist-wide exclusion.
+bool isRecommendationExcluded(
+  String name,
+  String artist,
+  Set<String> excluded,
+) {
+  return excluded.contains(AppDatabase.exclusionKey(name, artist)) ||
+      excluded.contains(AppDatabase.artistExclusionKey(artist));
+}
+
 /// Drop banned tracks (exact `name|artist` key match). Pure — the
 /// caller loads the set once per feed via `AppDatabase.loadExclusionKeys`.
 List<GeneratedTrack> applyExclusions(
@@ -230,7 +240,7 @@ List<GeneratedTrack> applyExclusions(
   Set<String> excluded,
 ) {
   if (excluded.isEmpty) return tracks;
-  return tracks.where((t) => !excluded.contains(t.key)).toList();
+  return tracks.where((t) => !isRecommendationExcluded(t.name, t.artist, excluded)).toList();
 }
 
 /// Rank global new releases by taste: known artists (normalized
@@ -1514,7 +1524,7 @@ class FeedRepository {
         .catchError((_) => <HomeTrack>[]);
     final excluded = _db?.loadExclusionKeys() ?? const <String>{};
     bool banned(HomeTrack t) =>
-        excluded.contains(AppDatabase.exclusionKey(t.name, t.artist));
+        isRecommendationExcluded(t.name, t.artist, excluded);
     LocalTaste? mixLocalTaste;
     try {
       final fetch = fetchLocalTaste;
