@@ -684,6 +684,8 @@ class InnerTubeMusicApi {
   static const int _maxStreamCacheEntries = 256;
   static const int _streamTtlMs = 4 * 60 * 60 * 1000;
   static const int _maxMatchCacheEntries = 1024;
+  static const int _maxLastResolvedEntries = 256;
+  static const int _maxCooldowns = 128;
   static const int _urlExpiryMarginMs = 2 * 60 * 1000;
   static const int _unknownExpiryTtlMs = 5 * 60 * 1000;
   // Limusic fast path: one preferred direct-URL client first,
@@ -3637,6 +3639,9 @@ static String normalize(String s) {
       // v2 re-validates rows written by the old scorer: a cached remix
       // for a non-remix request is dropped and re-resolved below.
       if (_cachedRowStillFaithful(cached, title, cleanArtist)) {
+        // Touch the LRU entry so frequently replayed songs stay cached.
+        _matchCache.remove(cacheKey);
+        _matchCache[cacheKey] = cached;
         return cached;
       }
       _matchCache.remove(cacheKey);
@@ -3664,6 +3669,7 @@ static String normalize(String s) {
             if (duration > 0 &&
                 _cachedRowStillFaithful(track, title, cleanArtist)) {
               _matchCache[cacheKey] = track;
+              _trimOldest(_matchCache, _maxMatchCacheEntries);
               return track;
             } else if (duration > 0) {
               try {
@@ -3710,9 +3716,8 @@ static String normalize(String s) {
       throw NoReliableMatchException(
           'No reliable YouTube Music match found for $title by $artist');
     }
-    if (_matchCache.length > _maxMatchCacheEntries) {
-      _matchCache.clear();
-    }
+    // Preserve the hot working set instead of clearing every cached match.
+    _trimOldest(_matchCache, _maxMatchCacheEntries);
     _matchCache[cacheKey] = best;
     // Persist for instant reuse (disk cache).
     try {
@@ -4025,6 +4030,7 @@ static String normalize(String s) {
               videoId, candidate, client.key, authScope, DateTime.now());
           _lastResolved[videoId] =
               _ResolvedRef(client.key, authScope);
+          _trimOldest(_lastResolved, _maxLastResolvedEntries);
           _logStream('resolved',
               videoId: videoId,
               client: client.key,
@@ -4035,10 +4041,7 @@ static String normalize(String s) {
           return candidate.stream;
         }
       } catch (e) {
-        _failedClientsUntil[
-                '$videoId|${client.key}|$authScope'] =
-            DateTime.now()
-                .add(Duration(milliseconds: _clientCooldownMs));
+        _coolClient(videoId, client.key, authScope);
         _logStream('client-resolve-failed',
             videoId: videoId,
             client: client.key,
@@ -4541,9 +4544,17 @@ static String normalize(String s) {
     return cooling;
   }
 
-  void _coolClient(String videoId, String clientKey) {
-    _failedClientsUntil['$videoId|$clientKey|${_playbackAuthScope()}'] =
+  void _coolClient(String videoId, String clientKey, [String? authScope]) {
+    _failedClientsUntil[
+            '$videoId|$clientKey|${authScope ?? _playbackAuthScope()}'] =
         DateTime.now().add(Duration(milliseconds: _clientCooldownMs));
+    // Cooldowns expire quickly, but idle track keys otherwise accumulate
+    // forever during long radio sessions.
+    if (_failedClientsUntil.length > _maxCooldowns) {
+      final now = DateTime.now();
+      _failedClientsUntil.removeWhere((_, until) => !now.isBefore(until));
+      _trimOldest(_failedClientsUntil, _maxCooldowns);
+    }
   }
 
   void reportPlaybackFailure(String videoId) {
@@ -4553,9 +4564,7 @@ static String normalize(String s) {
     } catch (_) {}
     final ref = _lastResolved.remove(videoId);
     if (ref != null) {
-      _failedClientsUntil[
-              '$videoId|${ref.clientProfile}|${ref.authScope}'] =
-          DateTime.now().add(Duration(milliseconds: _clientCooldownMs));
+      _coolClient(videoId, ref.clientProfile, ref.authScope);
       _logStream('report-failure',
           videoId: videoId, client: ref.clientProfile);
     } else {
@@ -4563,6 +4572,16 @@ static String normalize(String s) {
         _coolClient(videoId, c.key);
       }
       _logStream('report-failure', videoId: videoId);
+    }
+  }
+
+  /// FIFO trim for insertion-ordered maps, keeping recent/hot entries.
+  static void _trimOldest<K, V>(Map<K, V> cache, int max) {
+    if (cache.length <= max) return;
+    final doomed =
+        cache.keys.take(cache.length - max).toList(growable: false);
+    for (final key in doomed) {
+      cache.remove(key);
     }
   }
 
