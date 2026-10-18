@@ -27,53 +27,6 @@ List<({GeneratedTrack track, double score})> _scored(
     ];
 
 
-void main() {
-  group('localTrackFeedbackScore', () {
-    test('likes and downloads strongly boost a matching track', () {
-      final track = _t('Signal', 'Artist');
-      final key = localTrackFeedbackKey('Signal', 'Artist');
-      expect(
-        localTrackFeedbackScore(
-          track,
-          likedKeys: {key},
-          downloadedKeys: {key},
-        ),
-        24.0,
-      );
-    });
-
-    test('repeated plays favor familiar shelves', () {
-      final track = _t('Signal', 'Artist');
-      final key = localTrackFeedbackKey('Signal', 'Artist');
-      expect(
-        localTrackFeedbackScore(
-          track,
-          recentPlayCounts: {key: 3},
-        ),
-        7.5,
-      );
-    });
-
-    test('discovery penalizes repeatedly played tracks', () {
-      final track = _t('Signal', 'Artist');
-      final key = localTrackFeedbackKey('Signal', 'Artist');
-      expect(
-        localTrackFeedbackScore(
-          track,
-          recentPlayCounts: {key: 3},
-          discovery: true,
-        ),
-        -15.0,
-      );
-    });
-
-    test('feedback matching ignores surrounding whitespace and case', () {
-      final track = _t('  Signal ', ' ARTIST ');
-      final key = localTrackFeedbackKey('signal', 'artist');
-      expect(localTrackFeedbackScore(track, likedKeys: {key}), 16.0);
-    });
-  });
-
 // Offline feed-integration fakes: every network leg is closure-
 // injected, so no test touches Last.fm, YouTube, or the artwork
 // services. Fake tracks always carry artwork + videoIds so the
@@ -145,6 +98,52 @@ List<HomeTrack> topTracks() =>
     [ht('Top One', 'Superstar'), ht('Top Two', 'Idol')];
 
 void main() {
+group('localTrackFeedbackScore', () {
+    test('likes and downloads strongly boost a matching track', () {
+      final track = _t('Signal', 'Artist');
+      final key = localTrackFeedbackKey('Signal', 'Artist');
+      expect(
+        localTrackFeedbackScore(
+          track,
+          likedKeys: {key},
+          downloadedKeys: {key},
+        ),
+        24.0,
+      );
+    });
+
+    test('repeated plays favor familiar shelves', () {
+      final track = _t('Signal', 'Artist');
+      final key = localTrackFeedbackKey('Signal', 'Artist');
+      expect(
+        localTrackFeedbackScore(
+          track,
+          recentPlayCounts: {key: 3},
+        ),
+        7.5,
+      );
+    });
+
+    test('discovery penalizes repeatedly played tracks', () {
+      final track = _t('Signal', 'Artist');
+      final key = localTrackFeedbackKey('Signal', 'Artist');
+      expect(
+        localTrackFeedbackScore(
+          track,
+          recentPlayCounts: {key: 3},
+          discovery: true,
+        ),
+        -15.0,
+      );
+    });
+
+    test('feedback matching ignores surrounding whitespace and case', () {
+      final track = _t('  Signal ', ' ARTIST ');
+      final key = localTrackFeedbackKey('signal', 'artist');
+      expect(localTrackFeedbackScore(track, likedKeys: {key}), 16.0);
+    });
+  });
+
   group('normalizeArtistKey', () {
     test('strips featured credits and case', () {
       expect(normalizeArtistKey('Anirudh Ravichander'),
