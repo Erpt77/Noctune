@@ -603,8 +603,8 @@ class _WaveShellState extends ConsumerState<WaveShell> {
                                       // This persistent-sidebar layout keeps
                                       // content visible when the rail expands.
                                       AnimatedPositioned(
-                                        duration: WaveMotion.normal,
-                                        curve: WaveMotion.standard,
+                                        duration: const Duration(milliseconds: 180),
+                                        curve: Curves.easeOutCubic,
                                         left: collapsed
                                             ? WaveDensity.railCollapsed
                                             : WaveDensity.railExpanded,
