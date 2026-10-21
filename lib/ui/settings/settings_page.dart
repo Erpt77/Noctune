@@ -35,7 +35,8 @@ const _waveSettingsSections = [
   ('audio', 'Audio', FluentIcons.speakers),
   ('downloads', 'Downloads', FluentIcons.download),
   ('lyrics', 'Lyrics', FluentIcons.microphone),
-  ('appearance', 'Appearance', FluentIcons.brush),
+  ('appearance', 'Themes', FluentIcons.brush),
+  ('ui_changes', 'UI Changes', FluentIcons.view_all),
   ('lastfm', 'Last.fm', FluentIcons.heart),
   ('integrations', 'Integrations', FluentIcons.link),
   ('sources', 'Sources', FluentIcons.cloud),
@@ -195,6 +196,8 @@ class _SectionBody extends ConsumerWidget {
         return _Downloads(onUpdate: onUpdate);
       case 'appearance':
         return _Appearance(onUpdate: onUpdate);
+      case 'ui_changes':
+        return _UiChanges(onUpdate: onUpdate);
       case 'lyrics':
         return _Lyrics(onUpdate: onUpdate);
       case 'lastfm':
@@ -498,6 +501,57 @@ class _InShellConnectState extends ConsumerState<_InShellConnect> {
   }
 }
 
+
+/// Interface layout controls are deliberately separate from Themes:
+/// palette selection must never be confused with a layout change.
+class _UiChanges extends ConsumerWidget {
+  final Future<void> Function(Future<void> Function(Prefs)) onUpdate;
+  const _UiChanges({required this.onUpdate});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = ref.watch(themeControllerProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('UI Changes', style: WaveType.pageTitle),
+        const SizedBox(height: 4),
+        Text(
+          'Change how Noctune is arranged. These options do not change your color palette.',
+          style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+        ),
+        const SizedBox(height: 12),
+        _Group(
+          title: 'Interface layout',
+          subtitle: 'Change navigation layout without changing your colors',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ComboBox<String>(
+                value: theme.uiLayout,
+                items: const [
+                  ComboBoxItem(value: 'standard', child: Text('Standard · responsive navigation')),
+                  ComboBoxItem(value: 'compact', child: Text('Compact · collapse navigation sooner')),
+                  ComboBoxItem(value: 'expanded', child: Text('Expanded · keep navigation open')),
+                ],
+                onChanged: (v) {
+                  if (v != null) onUpdate((p) => p.setUiLayout(v));
+                },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'This setting only changes the app layout. Any color palette can be used with any layout.',
+                style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+}
+
 class _Audio extends ConsumerWidget {
   final Future<void> Function(Future<void> Function(Prefs)) onUpdate;
   const _Audio({required this.onUpdate});
@@ -683,32 +737,6 @@ class _Appearance extends ConsumerWidget {
               await ref.read(themeControllerProvider.notifier).setThemeMode(v == 'light');
               await applyWindowMaterial(isLight: v == 'light');
             },
-          ),
-        ),
-        const SizedBox(height: 8),
-        _Group(
-          title: 'UI layout',
-          subtitle: 'Change navigation layout without changing your colors',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ComboBox<String>(
-                value: theme.uiLayout,
-                items: const [
-                  ComboBoxItem(value: 'standard', child: Text('Standard · responsive navigation')),
-                  ComboBoxItem(value: 'compact', child: Text('Compact · collapse navigation sooner')),
-                  ComboBoxItem(value: 'expanded', child: Text('Expanded · keep navigation open')),
-                ],
-                onChanged: (v) {
-                  if (v != null) onUpdate((p) => p.setUiLayout(v));
-                },
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'This setting only changes the app layout. Any color palette can be used with any layout.',
-                style: WaveType.meta.copyWith(color: waveTextSecondary(context)),
-              ),
-            ],
           ),
         ),
         const SizedBox(height: 8),
