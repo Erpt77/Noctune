@@ -6,13 +6,16 @@ import 'package:fluent_ui/fluent_ui.dart';
 /// `lib/design_system/tokens.dart` (`LwColors` / `LwRadius`) is retired;
 /// new UI code must not import it or copy values from it.
 ///
-/// Noctune's desktop direction is a structured, block-based music UI:
-/// - Clear navigation, content panels, shelves, and track rows.
-/// - Modest corner radii for cards and controls; no giant pills or capsule
-///   layouts. Reserve pill shapes for small chips and circular transport
-///   buttons.
-/// - Neutral graphite surfaces, readable contrast, and restrained accents.
-/// - Artwork provides visual personality without flooding whole panels.
+/// Noctune's desktop UI should feel cohesive without forcing every element
+/// into the same shape:
+/// - Mix square-cornered areas with subtly rounded cards, controls, and menus
+///   where each shape suits the component.
+/// - Avoid making every surface rounded or turning ordinary controls into
+///   oversized pills; reserve pill shapes for components that benefit from
+///   them, such as chips.
+/// - Keep navigation, shelves, track rows, and player controls visually clear.
+/// - Use neutral graphite surfaces, readable contrast, and restrained accents.
+/// - Let artwork provide visual personality without overwhelming the interface.
 class WaveColors {
   WaveColors._();
 
@@ -77,18 +80,19 @@ class WaveSpacing {
   static const double x32 = 40;
 }
 
-/// Radii (px) — sharp system.
+/// Corner radii (px) for a balanced mix of shapes.
 ///
-/// - tiny 3: hairline chips, thumbs, dividers that need a cap.
-/// - controls 5: buttons, text fields, icon-button hover wells.
-/// - menu 7: menus, popovers, flyouts, tooltips.
-/// - artwork 6: cover art, tiles.
-/// - floating 10: MAX for floating surfaces (dialogs, cards, shelves).
-/// - structural 0: rails, docks, title bars, page scaffolds.
+/// These are defaults, not a rule that every component must be rounded:
+/// - tiny 3: small details that need a slight cap.
+/// - controls 5: buttons, text fields, and icon-button hover wells.
+/// - menu 7: menus, popovers, flyouts, and tooltips.
+/// - artwork 6: cover art and tiles.
+/// - floating 10: dialogs, cards, and shelves where rounded corners help.
+/// - structural 0: rails, docks, title bars, and page scaffolds.
 ///
-/// Do NOT use radii >= 16 anywhere. No 20–30px "soft" cards, no giant
-/// pills — pill/circle shapes are reserved for meta chips and the
-/// circular transport (play) button only.
+/// Choose the shape that suits each component. Avoid applying one radius
+/// everywhere or using pill shapes by default; larger radii may be appropriate
+/// for specific components when the overall design calls for them.
 class WaveRadius {
   WaveRadius._();
   static const double tiny = 3;
