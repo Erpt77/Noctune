@@ -277,7 +277,7 @@ class _Group extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.resources.cardBackgroundFillColorDefault,
             border: Border.all(color: stroke),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,7 +304,7 @@ class _Group extends StatelessWidget {
               bottom: BorderSide(color: stroke),
             ),
             borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(16),
+              bottom: Radius.circular(10),
             ),
           ),
           child: child,
