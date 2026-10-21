@@ -277,7 +277,7 @@ class _Group extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.resources.cardBackgroundFillColorDefault,
             border: Border.all(color: stroke),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,7 +304,7 @@ class _Group extends StatelessWidget {
               bottom: BorderSide(color: stroke),
             ),
             borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(6),
+              bottom: Radius.circular(16),
             ),
           ),
           child: child,
@@ -427,7 +427,7 @@ class _InShellConnectState extends ConsumerState<_InShellConnect> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _error =
-          'Not approved yet — approve LastWave in the browser, then retry.');
+          'Not approved yet — approve Noctune in the browser, then retry.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
