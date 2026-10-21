@@ -1,20 +1,18 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// CANONICAL — all agents must import this, do NOT use LwColors/LwRadius.
+/// Canonical design tokens for Noctune desktop.
 ///
-/// `lib/ui/theme/tokens.dart` is the single source of truth for the
-/// LastWave "Wave" design system. The legacy `lib/design_system/tokens.dart`
-/// (`LwColors` / `LwRadius` — ice-blue accent, 12–24px radii) is retired:
-/// do not import it from new code, do not copy values out of it.
+/// `lib/ui/theme/tokens.dart` is the single source of truth. The legacy
+/// `lib/design_system/tokens.dart` (`LwColors` / `LwRadius`) is retired;
+/// new UI code must not import it or copy values from it.
 ///
-/// Wave direction:
-/// - Neutral graphite base (#0E0E0E / #161616 / #1E1E1E), off-white text.
-/// - NO blue/navy theme, NO 20–30px radii, NO giant pills (pill shapes are
-///   allowed ONLY for [WaveChip]-style chips and circular transport
-///   buttons).
-/// - The base stays neutral; artwork drives personality. The off-white
-///   accent is used sparingly (play affordance, progress fill, selection),
-///   never as large tinted surfaces.
+/// Noctune's desktop direction is a structured, block-based music UI:
+/// - Clear navigation, content panels, shelves, and track rows.
+/// - Modest corner radii for cards and controls; no giant pills or capsule
+///   layouts. Reserve pill shapes for small chips and circular transport
+///   buttons.
+/// - Neutral graphite surfaces, readable contrast, and restrained accents.
+/// - Artwork provides visual personality without flooding whole panels.
 class WaveColors {
   WaveColors._();
 
