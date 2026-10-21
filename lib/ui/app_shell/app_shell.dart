@@ -598,34 +598,23 @@ class _WaveShellState extends ConsumerState<WaveShell> {
 
                                   return Stack(
                                     children: [
-                                      // Page reserves the collapsed rail
-                                      // strip; the rail floats above it.
-                                      Positioned.fill(
-                                        left: WaveDensity.railCollapsed,
+                                      // Keep the navigation rail beside the
+                                      // page instead of covering the page.
+                                      // This persistent-sidebar layout keeps
+                                      // content visible when the rail expands.
+                                      AnimatedPositioned(
+                                        duration: const Duration(milliseconds: 180),
+                                        curve: Curves.easeOutCubic,
+                                        left: collapsed
+                                            ? WaveDensity.railCollapsed
+                                            : WaveDensity.railExpanded,
+                                        top: 0,
+                                        bottom: 0,
+                                        right: 0,
                                         child: widget.child,
                                       ),
-                                      // Light-dismiss: tapping outside the
-                                      // expanded rail collapses it (tap is
-                                      // absorbed, content doesn't activate).
-                                      // Below the rail + panels, so those
-                                      // keep working while it is open.
-                                      if (!collapsed)
-                                        Positioned.fill(
-                                          child: ExcludeSemantics(
-                                            child: GestureDetector(
-                                              behavior: HitTestBehavior
-                                                  .translucent,
-                                              onTap: () => setState(() =>
-                                                  _railExpanded = false),
-                                              child:
-                                                  const SizedBox.expand(),
-                                            ),
-                                          ),
-                                        ),
-                                      // Overlay rail: width animates
-                                      // internally; content constraints
-                                      // stay constant, so nothing reflows
-                                      // or rebuilds during the animation.
+                                      // The rail remains a distinct,
+                                      // persistent navigation column.
                                       Positioned(
                                         left: 0,
                                         top: 0,
