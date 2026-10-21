@@ -6,9 +6,7 @@ import 'secrets.g.dart' as secrets;
 ///
 /// Secrets are baked in at build time as XOR-obfuscated byte arrays
 /// (`dart tool/obfuscate_secrets.dart` reads the gitignored `.env`
-/// and generates `secrets.g.dart`), mirroring LastWave-native's
-/// `obfuscateSecret()` / `decodeSecretBytes` scheme with the same
-/// mask. They are decoded only in memory at runtime — every user of
+/// and generates `secrets.g.dart`), using the existing compatible secret-obfuscation mask. They are decoded only in memory at runtime — every user of
 /// the app gets addon/lyrics access with no keys of their own, and
 /// no plaintext secret ships in the binary.
 ///
@@ -20,7 +18,7 @@ import 'secrets.g.dart' as secrets;
 class AppEnv {
   AppEnv._();
 
-  /// Same mask as LastWave-native `SECRET_MASK`.
+  /// Compatible secret-obfuscation mask.
   static const _mask = [0x5A, 0x3F, 0x7E, 0x1B, 0x92, 0x4C, 0xA1, 0x6D];
 
   static String _decode(List<int> data) {
