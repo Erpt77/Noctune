@@ -14,7 +14,7 @@ import '../theme/wave_icons.dart';
 const _lastFmApiAccountUrl = 'https://www.last.fm/api/account/create';
 
 const _githubUrl =
-    'https://github.com/Clash-Projects/LastWave-Desktop';
+    'https://github.com/Erpt77/Noctune';
 
 /// Mandatory Last.fm entry screen.
 ///
@@ -81,7 +81,7 @@ class _WaveWelcomePageState
     } catch (e) {
       if (!mounted) return;
       setState(() => _error =
-          'Not approved yet — approve LastWave in the browser, then retry.');
+          'Not approved yet — approve Noctune in the browser, then retry.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -221,7 +221,7 @@ class _WelcomeChrome extends StatelessWidget {
           children: [
             const SizedBox(width: 16),
             Text(
-              'LASTWAVE',
+              'NOCTUNE',
               style: WaveType.overline.copyWith(
                 color: waveTextTertiary(context),
               ),
@@ -370,7 +370,7 @@ class _BrandVisual extends StatelessWidget {
             ),
             const SizedBox(height: 28),
             Text(
-              'LASTWAVE',
+              'NOCTUNE',
               style: WaveType.overline.copyWith(
                 color: accent,
                 fontSize: 12,
@@ -455,7 +455,7 @@ class _BrandVisualCompact extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'LASTWAVE',
+              'NOCTUNE',
               style: WaveType.overline.copyWith(color: accent),
             ),
             const Text(
@@ -598,7 +598,7 @@ class _AuthPanel extends ConsumerWidget {
           const _WelcomeMosaic(),
           const SizedBox(height: 20),
           Text(
-            'LastWave',
+            'Noctune',
             style: WaveType.pageTitle.copyWith(fontSize: 26),
           ),
           const SizedBox(height: 2),
@@ -613,7 +613,7 @@ class _AuthPanel extends ConsumerWidget {
           Text(
             'Connect Last.fm to personalize your music experience, '
             'sync your listening activity, recommendations and '
-            'profile across LastWave.',
+            'profile across Noctune.',
             style: WaveType.body.copyWith(
               color: dark
                   ? WaveColors.textSecondary
@@ -703,7 +703,7 @@ class _AuthPanel extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Approve LastWave in the browser tab that just opened, '
+              'Approve Noctune in the browser tab that just opened, '
               'then finish sign-in here.',
               style: WaveType.meta.copyWith(
                 color: dark
@@ -725,7 +725,7 @@ class _AuthPanel extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
           Text(
-            'Authentication opens through Last.fm — LastWave never asks '
+            'Authentication opens through Last.fm — Noctune never asks '
             'for your Last.fm password.',
             style: WaveType.meta.copyWith(
               color: dark
@@ -769,7 +769,7 @@ class _AuthPanel extends ConsumerWidget {
               children: [
                 Icon(FluentIcons.favorite_star, size: 14),
                 SizedBox(width: 6),
-                Text('Star LastWave on GitHub'),
+                Text('Star Noctune on GitHub'),
               ],
             ),
           ),
@@ -919,7 +919,7 @@ class _ApiKeyFormState extends ConsumerState<_ApiKeyForm> {
           ),
           const SizedBox(height: 6),
           Text(
-            'LastWave ships with no keys of its own — these stay on '
+            'Noctune ships with no keys of its own — these stay on '
             'this device.',
             style: WaveType.meta.copyWith(
               color: dark
