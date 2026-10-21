@@ -62,9 +62,22 @@ class Prefs {
   // Last.fm keys or session. Everything except Last.fm features works;
   // reconnect happens in Settings only. Sticky across restarts; cleared
   // by full sign-out and by saving a real session.
-  bool get isGuest => _sp.getBool('lw_guest_mode') ?? false;
-  Future<void> setGuestMode(bool v) =>
-      _sp.setBool('lw_guest_mode', v);
+  // Keep a separate completion marker as a migration-safe fallback. If an
+  // older build wrote the guest flag inconsistently, a completed welcome
+  // flow should not send the user back to onboarding on every launch.
+  bool get isGuest =>
+      _sp.getBool('lw_guest_mode') ??
+      _sp.getBool('noctune_welcome_completed') ??
+      false;
+
+  Future<void> setGuestMode(bool v) async {
+    await _sp.setBool('lw_guest_mode', v);
+    if (v) {
+      await _sp.setBool('noctune_welcome_completed', true);
+    } else {
+      await _sp.remove('noctune_welcome_completed');
+    }
+  }
 
   // -- Last.fm session (web auth under the user's own API key) ------------
   // Authentication is compulsory: there is no guest or anonymous mode.
@@ -84,12 +97,14 @@ class Prefs {
     await _sp.setString('lw_username', username);
     // Drop any legacy guest flag from older builds.
     await _sp.remove('lw_guest_mode');
+    await _sp.setBool('noctune_welcome_completed', true);
   }
 
   Future<void> signOut() async {
     await _sp.remove('lw_sessionkey');
     await _sp.remove('lw_username');
     await _sp.remove('lw_guest_mode');
+    await _sp.remove('noctune_welcome_completed');
   }
 
   // -- Audio quality (mirrors Android quality tiers) ---------------------
